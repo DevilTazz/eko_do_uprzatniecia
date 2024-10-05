@@ -1,0 +1,992 @@
+
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        
+        body {
+            margin: 0;
+            background-color: #f0f0f0;
+            font-family: Arial, sans-serif;
+        }        
+        .container {
+            margin: 0 auto;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .button {
+            font-size: 16px;
+            background-color: #ccffcc;
+            border-radius: 8px;
+            padding: 15px 32px;
+            display: inline-block;
+        }        
+        .popup {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000; /* Pozostaw wysoki z-index */
+            visibility: hidden;
+            opacity: 0;
+            transition: visibility 0.3s, opacity 0.3s ease;
+        }
+        .popup.show {
+            visibility: visible;
+            opacity: 1;
+        }
+        .popup-content {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            width: 300px;
+            text-align: center;
+            position: relative;
+        }
+        .popup-content-tiles {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            max-width: 90vw; /* Maksymalna szerokość popupu dostosowuje się do szerokości wyświetlacza */
+            /* max-height: 90vh;  Maksymalna wysokość popupu */
+            overflow: auto; /* Dodaje pasek przewijania, jeśli zawartość przekracza maksymalną wysokość */
+            box-sizing: border-box; /* Uwzględnia padding i border w szerokości */
+        }
+        .close-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 24px;
+            cursor: pointer;
+        }
+        .blur-background {
+            background-image: url('graphic/back1.jpg');
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            filter: blur(1px);
+            opacity: 0.9;
+            z-index: -1;
+        }
+        .opis {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .icon-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 20px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        .icon {
+            width: 100px;
+            height: 100px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+            background-color: #F5F5DC;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            text-align: center;
+            position: relative;           
+        }
+        .icon img {
+            max-width: 32px;
+            max-height: 32px;
+        }
+        .icon .name {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            font-size: 12px;
+            background: rgba(0, 0, 0, 0.5);
+            color: white;
+            text-align: center;
+            padding: 2px 0;
+            border-radius: 0 0 50% 50%;
+            box-sizing: border-box;
+            margin: 0;
+        }        
+        .sortable-ghost {
+            opacity: 0.4;
+            background-color: #3498db;
+        }        
+        .switch-container {
+            display: flex;
+            align-items: center; /* Wyrównanie pionowe */
+            justify-content: center; /* Wyrównanie elementów względem siebie */
+            background: linear-gradient(to right, #ffccff, #ff99cc);
+            padding: 10px;
+            border-radius: 10px;
+            position: relative;
+            
+        }
+         .switch-icon {            
+            top: -7px;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }        
+        /* Menu będzie ustawione na lewo */
+        .switch-icon.menu-icon {
+            order: 0; /* Kolejność elementów w kontenerze flex */
+            margin-right: 50px; /* Zmniejszone marginesy */
+            width: 24px; /* czat pisze kod bez tego... na pewno nie potrzeba? */
+            height: 24px; /* czat pisze kod bez tego... na pewno nie potrzeba? */
+            padding: 10px;
+            padding-right: 35px;
+            border: 2px solid black;
+            border-radius: 5px;
+        }
+        .menu-dropdown {
+            display: none;
+            position: absolute; /* Ustawia pozycję menu jako absolutną */
+            top: 100%; /* Menu zaczyna się zaraz pod divem z ID menu */
+            left: 40%; /* Ustawia menu w poziomie na środek kontenera */
+            transform: translateX(-50%); /* Wyśrodkowuje menu względem jego szerokości */
+            background-color: white; /* Kolor tła menu */
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1); /* Efekt cienia dla menu */
+            width: 250px; /* Możesz dostosować szerokość menu */
+            z-index: 10; /* Aby menu było wyżej od innych elementów */            
+            border-radius: 0 0 5px 5px; /* Zaokrąglenie tylko dolnych rogów */            
+        }
+        .menu-dropdown.show {
+            display: block; /* Pokazuje menu, gdy ma klasę 'show' */
+        }        
+        .menu-item {
+            margin: 20px;
+        }        
+        .menu-item:last-child {
+            border-bottom: none; /* Usuwa dolną granicę dla ostatniego elementu */            
+        }        
+        /* Ikona odblokowanej kłódki 50px ? na lewo od suwaka - chyba nie i chyba może być tak jak tu jest */
+        .switch-icon.unlocked {
+            order: 1;
+            margin-right: 12px; /* Ustawienie ikony 10px ? od suwaka */
+        }
+        .switch {            
+            --switch-width: 10vw; /* Definiowanie zmiennej */
+            --circle-width: 20px; /* Szerokość kółka */
+            width: var(--switch-width); /* Użycie zmiennej */
+            height: 10px;
+            order: 2;
+            background-color: #555;
+            border-radius: 5px;
+            position: relative;
+            cursor: pointer;
+            box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.3);
+            transition: background-color 0.3s;
+        }
+        .switch::before {
+            content: "";
+            position: absolute;
+            left: -5px;
+            width: var(--circle-width); /* Szerokość kółka */
+            height: 10px;
+            background: linear-gradient(135deg, #9e9e9e, #e0e0e0, #b0b0b0);
+            border-radius: 5px;
+            box-shadow: inset 0 0 2px rgba(255, 255, 255, 0.5), inset 0 0 4px rgba(0, 0, 0, 0.5);
+            transition: transform 0.3s;
+        }
+        .switch.on {
+            background-color: #4caf50;
+        }
+        .switch.on::before {
+            transform: translateX(calc(var(--switch-width) - var(--circle-width) + 10px));
+        }
+        /* Ikona zablokowanej kłódki 50px ? na prawo od suwaka */
+        .switch-icon.locked {
+            order: 3;
+            margin-left: 12px; /* Zmniejszone marginesy */
+        }
+        /* Kosz wyrównany maksymalnie po prawej */
+        .switch-icon.trash-icon {
+            order: 4;
+            margin-left: 50px; /* Zmniejszone marginesy */             
+            padding: 10px;
+            border: 2px solid black;
+            border-radius: 50%;
+           
+        }
+        .switch-icon.trash-icon img {
+            width: 24px; /* Ustaw rozmiar ikony */
+            height: 24px; /* Ustaw rozmiar ikony */
+            
+        }       
+        .grayscale {
+            filter: grayscale(100%);
+            opacity: 0.5;
+            transition: filter 0.3s, opacity 0.3s;
+        }
+        .disabled {
+            pointer-events: none;
+            opacity: 0.5;
+        }
+        #add-tile {
+            color: black;
+            font-size: 36px;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+            background-color: #F5F5DC;
+        }
+        #tile-popup .tile-list {
+            padding: 0;
+            margin: 0;
+        }
+        a:link {
+            text-decoration: none;
+            color: white;
+        }
+        /* Style dla kafelków w dymku */
+        #available-tiles {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); /* Automatyczne dopasowywanie kolumn */
+        gap: 10px; /* Odstęp między kafelkami */
+        box-sizing: border-box; /* Uwzględnia padding i border w szerokości */
+        max-width: 100%; /* Maksymalna szerokość kontenera dopasowuje się do szerokości popupu */
+        overflow-y: auto; /* Dodaje pasek przewijania, jeśli zawartość przekracza wysokość */
+        }
+        .tile-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-bottom: 10px; /* Margines między elementami listy */
+            transition: background-color 0.2s; /* Płynne przejście koloru tła */
+            max-width: 300px; /* Maksymalna szerokość dla pojedynczego elementu */
+            width: 100%; /* Umożliwienie wypełnienia dostępnej szerokości */
+            justify-content: center; /* Wyśrodkowanie zawartości */
+            text-align: center; /* Wyśrodkowanie tekstu */
+            box-sizing: border-box; /* Uwzględnia padding i border w szerokości */
+            position: relative; /* Umożliwia pozycjonowanie absolutnych elementów wewnątrz */     
+        }    
+        .tile-icon {
+            width: 24px;
+            height: 24px;
+            margin-left: 10px;
+            margin-right: 10px;            
+        }        
+        /* Ogólne stylowanie ikony check */
+        .fa-check {
+            top: 0; /* Możesz dostosować pozycję */
+            left: 0; /* Możesz dostosować pozycję */
+            color: #68f708; /* #37ff00;  Zielony kolor */
+            font-size: 50px; /* Możesz dostosować rozmiar */
+            z-index: 20; /* Aby upewnić się, że ikona pojawia się nad kafelkiem */
+            margin-right: 8px; /* Odstęp od innych elementów */
+            vertical-align: middle; /* Wyrównanie ikony w pionie */
+            position: absolute;
+            display: none; /* Domyślnie ukryta */
+        }
+        .tile-item.checked .fa-check {
+            display: block; /* Pokazuje ikonę, gdy kafelek ma klasę 'checked' */
+        }
+        .tile-info {
+            display: flex;
+            flex-direction: column;
+            align-items: center; /* Wyśrodkowanie w pionie */
+            justify-content: center; /* Wyśrodkowanie w poziomie */
+            text-align: center; /* Wyśrodkowanie tekstu wewnątrz */
+            flex: 1;
+        }
+        .tile-name {
+            font-size: 16px;
+            font-weight: bold;            
+        }
+        .tile-description {
+            font-size: 12px;
+            color: #888;           
+        }
+
+        
+         /* Stylizacja kontenera przełącznika */
+        .switch-container1 {
+            position: relative;
+            left: 150px;
+        }
+
+        /* Stylizacja przełącznika */
+        .switch1 {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+        .switch1 input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .slider1 {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+        .slider1:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider1 {
+            background-color: #4CAF50;
+        }
+        input:checked + .slider1:before {
+            transform: translateX(26px);
+        }
+        /* Stylizacja dodatkowego elementu */
+        .extra-content {
+            display: none;
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #f1f1f1;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+</head>
+<body>
+    <div class="blur-background"></div>
+    
+    
+    
+    <div class="container">
+        
+        <!-- Switch container -->
+        <div class="switch-container">
+
+             <!-- tu jest przełącznik ukrywający przycisk info
+            
+             <div class="switch-container1">
+                <label class="switch1">
+                <input type="checkbox" id="toggleSwitch">
+                <span class="slider1"></span>
+                </label>
+             </div> 
+            
+            -->
+            <div id="menu" class="switch-icon menu-icon">
+                <img src="graphic/menu_svgrepo_com1.svg" alt="Menu">MENU
+                 <!-- Rozwijane menu wewnątrz div menu -->
+                <div id="menu-dropdown" class="menu-dropdown">
+                    <div class="menu-item">Ikonka</div>
+                    <div class="menu-item">Profil?</div>
+                    <div class="menu-item">pstryczek pokaż/ukryj info</div>
+                    <div class="menu-item">Wczytaj z pliku</div> <!-- <input type="file" id="import-tiles" accept=".json">  ---- Przycisk do importu --> 
+                    <div id="export-tiles" class="menu-item">Eksportuj do pliku</div>
+                    <!-- Nie zapomnij uwzględnić tego: " <button id="save-tiles">Zapisz do LocalStorage</button> - Przycisk do zapisu " w logice "suwaczka" --> 
+                    <!-- <div class="menu-item">to później</div> -->
+                    <div class="menu-item">TOS</div>
+                    <div class="menu-item">Privacy</div>
+                </div>               
+            </div>
+            
+            <div id="icon-unlocked" class="switch-icon unlocked">
+                <img src="graphic/unlock_1.png" alt="Unlocked">
+            </div>
+            <div id="switch" class="switch"></div>
+            <div id="icon-locked" class="switch-icon locked grayscale">
+                <img src="graphic/padlock_1.png" alt="Locked">
+            </div>
+            <div id="trash" class="switch-icon trash-icon">
+                <img src="graphic/open_trash_test.svg" alt="Trash">
+            </div>
+            
+        </div>
+        
+        <div class="opis">
+            <button id="open-popup-btn" class="button">Zobacz info</button>
+        </div>
+        <div id="popup" class="popup hidden">
+            <div class="popup-content">
+                <span id="close-popup-btn" class="close-btn">&times;</span>
+                <h2>Witaj w Eko!</h2>
+                <p>Spisie aplikacji w Ekosystemie<br>Pi Network</p>
+            </div>
+        </div>
+        <div class="icon-container" id="sortable-container">
+            <!-- Ikony zostaną dodane dynamicznie -->
+            <div id="add-tile">+</div>            
+        </div>
+        
+    </div>
+    
+    <!-- Dymek do wybierania kafelków -->
+    <div id="tile-popup" class="popup hidden">
+        <div class="popup-content-tiles">
+            <span id="close-tile-popup" class="close-btn">&times;</span>
+            <h2>Dodaj kafelek</h2>
+            <div id="available-tiles" class="tile-list"></div>
+        </div>
+    </div>
+    <script>
+       document.addEventListener("DOMContentLoaded", function() {
+            const popup = document.getElementById("popup");
+            const openPopupBtn = document.getElementById("open-popup-btn");
+            const closePopupBtn = document.getElementById("close-popup-btn");
+            const switchElement = document.getElementById("switch");
+            const unlockedIcon = document.getElementById("icon-unlocked");
+            const lockedIcon = document.getElementById("icon-locked");
+            const addTileBtn = document.getElementById("add-tile");
+            const tilePopup = document.getElementById("tile-popup");
+            const closeTilePopupBtn = document.getElementById("close-tile-popup");
+            const availableTilesContainer = document.getElementById("available-tiles");
+            const sortableContainer = document.getElementById("sortable-container");
+            const trashIcon = document.getElementById("trash");
+           console.log("trashIcon:", trashIcon); // Dodaj ten log
+            const addTileId = document.getElementById("add-tile"); // Zdefiniuj id kafelka z plusem
+            const saveTilesBtn = document.getElementById('save-tiles');              
+            const addedTiles = new Set(); // Zmienna do śledzenia dodanych kafelków
+    
+  /*  loadTilesFromLocalStorage(); <--- Tą funkcję włączyć gdy będzie działać jej kod napisany tam na dole. Bez tego wysypuje stronę */
+           
+            // Toggle popup visibility
+            if (popup && openPopupBtn && closePopupBtn) {
+                openPopupBtn.addEventListener("click", function() {
+                    popup.classList.add("show");
+                    loadAvailableTiles(); // Ładuj kafelki przy otwieraniu popupu
+                });
+                closePopupBtn.addEventListener("click", function() {
+                    popup.classList.remove("show");
+                });
+                document.addEventListener("click", function(event) {
+                    if (event.target === popup) {
+                        popup.classList.remove("show");
+                    }
+                });
+            }
+
+            // Toggle switch and icon
+            if (switchElement && unlockedIcon && lockedIcon) {
+                switchElement.addEventListener("click", function() {
+                    switchElement.classList.toggle("on");
+                    updateIcons();
+                });
+            }
+
+           // Add tile popup functionality
+            if (addTileBtn) {
+                addTileBtn.addEventListener("click", function() {
+                    if (!switchElement.classList.contains("on")) {
+                        tilePopup.classList.add("show");
+                    }
+                });
+            }
+
+            // Close tile popup
+            if (closeTilePopupBtn) {
+                closeTilePopupBtn.addEventListener("click", function() {
+                    tilePopup.classList.remove("show");
+                });
+                document.addEventListener("click", function(event) {
+                    if (event.target === tilePopup) {
+                        tilePopup.classList.remove("show");
+                    }
+                });
+            }
+
+    // Funkcja do konfiguracji sortowalnych kontenerów
+    function setupSortableContainers() {
+        Sortable.create(sortableContainer, {
+            group: { 
+                name: "tiles",
+                pull: true,
+                put: true
+            },
+            animation: 150,
+            onEnd: evt => {
+                if (evt.from === trashIcon) {
+                    console.log('Kafelek usunięty do kosza'); 
+                }
+            }
+        });
+
+        Sortable.create(trashIcon, {
+            group: "tiles",
+            onAdd: function (evt) {
+                removeTile(evt.item); // Usunięcie kafelka
+                console.log('Kafelek usunięty do kosza'); 
+            }
+        });
+    }
+ 
+
+            // Funkcja aktualizująca ikony
+            function updateIcons() {
+                const isSwitchOn = switchElement.classList.contains("on");
+                console.log("Switch is", isSwitchOn); // Loguj stan przełącznika
+                
+                unlockedIcon.classList.toggle("grayscale", isSwitchOn);
+                lockedIcon.classList.toggle("grayscale", !isSwitchOn);
+                addTileBtn.classList.toggle("grayscale", isSwitchOn);
+
+                // Zmiana ikony kosza
+                const trashImg = trashIcon.querySelector('img');
+                 if (trashImg) {
+                     trashImg.src = !isSwitchOn ? "graphic/open_trash_test.svg" : "graphic/trash_svgrepo_com.svg"; 
+                     console.log("Trash icon changed to", trashImg.src); // Loguj zmianę ikony
+                     console.log("Adding class to trashImg:", 'switch-icon');
+                    trashIcon.classList.toggle('switch-icon', isSwitchOn); // Dodaj klasę do kontenera
+        trashIcon.classList.toggle('trash-icon', isSwitchOn); // Dodaj klasę do kontenera
+                     
+
+
+
+             // Funkcja ładowania dostępnych kafelków z JSON
+            function loadAvailableTiles() {
+                fetch('assets/tiles.json')
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok');
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        availableTilesContainer.innerHTML = ''; // Czyścimy kontener przed dodaniem nowych kafelków
+                        data.forEach(tile => {
+                            const tileElement = createTileForPopup(tile.iconUrl, tile.id, tile.name, tile.description);
+                            availableTilesContainer.appendChild(tileElement);
+                            console.log("Available tiles container children:", availableTilesContainer.children);
+
+                            // Dodaj nasłuchiwacz kliknięcia
+                            tileElement.addEventListener("click", function() {
+                                console.log("Switch ON?", switchElement.classList.contains("on"));
+                                console.log("Tile ID?", tile.id);
+                                console.log("Tile already added?", addedTiles.has(tile.id));
+
+                                if (!switchElement.classList.contains("on") && !addedTiles.has(tile.id)) {
+                                    addedTiles.add(tile.id);
+                                    const newTile = createTileForMainScreen(tile.iconUrl, tile.id, tile.name, tile.link);
+                                    sortableContainer.appendChild(newTile);
+                                    
+                                    // Pokazanie ikony check na elemencie listy
+                                    const checkIcon = tileElement.querySelector('.fa-check');
+                                    if (checkIcon) {
+                                        checkIcon.style.display = 'block'; // Pokazuje ikonę check
+                                    } 
+                                }
+                            });
+                        });
+                    })
+                    .catch(error => {
+                        console.error('Błąd podczas pobierania kafelków:', error);
+                    });
+            }
+        
+            // Funkcja tworząca kafelek w dymku
+            function createTileForPopup(iconSrc, tileId, tileName, tileDescription) {
+                const tile = document.createElement("div");
+                tile.className = "tile-item";
+                tile.innerHTML = `<img src="${iconSrc}" alt="Tile" class="tile-icon">
+                    <div class="tile-info">
+                        <div class="tile-name">${tileName}</div>
+                        <div class="tile-description">${tileDescription}</div>
+                    </div>
+                    <i class="fa-check" style="display: none;">&#10003;</i>`;
+                tile.id = tileId;
+            
+               tile.addEventListener('click', () => {
+                    // Dodawanie kafelka do głównego ekranu, jeśli switch jest wyłączony i kafelek nie został dodany
+                    if (!switchElement.classList.contains("on") && !addedTiles.has(tileId)) {
+                        const newTile = createTileForMainScreen(iconSrc, tileId, tileName, 'link'); // Podmień 'link' na rzeczywisty link
+                        if (newTile) {
+                            sortableContainer.appendChild(newTile);
+                        }
+                        const checkIcon = tile.querySelector('.fa-check');
+                        if (checkIcon) {
+                            checkIcon.style.display = 'block'; // Pokazuje ikonę check
+                        }
+                    }
+                    tilePopup.classList.remove("show");
+                });
+                
+                return tile;
+            }
+
+            // Funkcja tworząca kafelek na ekranie głównym
+            function createTileForMainScreen(iconSrc, tileId, tileName, tileLink) {
+                // Sprawdzenie, czy kafelek już został dodany
+                if (addedTiles.has(tileId)) {
+                    console.log(`Kafelek o ID ${tileId} już istnieje na ekranie głównym.`);
+                    return null; // Jeśli kafelek już istnieje, nic nie rób
+                }
+            
+                // Tworzenie kafelka
+                const tile = document.createElement("div");
+                tile.className = "icon";
+                tile.innerHTML = `<a href="${tileLink}"><img src="${iconSrc}" alt="Tile"><div class="name">${tileName}</a></div>`;
+                tile.id = tileId;
+            
+                // Dodanie kafelka do zestawu `addedTiles`
+                addedTiles.add(tileId);
+                console.log(`Dodano kafelek: ${tileName} (ID: ${tileId}) do zestawu.`);                
+                
+                return tile;
+            }
+
+        
+            
+/*
+
+
+
+/*
+            
+            // Toggle popup visibility
+            if (popup && openPopupBtn && closePopupBtn) {
+                openPopupBtn.addEventListener("click", function() {
+                    popup.classList.add("show");
+                });
+                closePopupBtn.addEventListener("click", function() {
+                    popup.classList.remove("show");
+                });
+                // Zamknij popup po kliknięciu poza jego obszarem
+                document.addEventListener("click", function(event) { // czy tu nie powinien być taki kod? " tilePopup.addEventListener('click', function(event) { " 
+                    if (event.target === tilePopup) {
+                        popup.classList.remove("show");
+                    }
+                });
+            }
+           
+            addTileBtn.addEventListener("click", function(event) {
+                event.preventDefault();
+                tilePopup.classList.add("show");
+                loadAvailableTiles();
+            });
+            // Zamknij popup po kliknięciu przycisku "Zamknij"
+            closePopupBtn.addEventListener("click", function(event) {
+                event.preventDefault();
+                tilePopup.classList.remove("show");
+            });
+            // Zamknij popup po kliknięciu poza jego obszarem
+            window.addEventListener('click', function(event) {
+                if (tilePopup.classList.contains("show") && !tilePopup.contains(event.target) && event.target !== addTileBtn) {
+                    tilePopup.classList.remove("show");
+                }
+            });
+            // Zapisz kafelki do LocalStorage
+            saveTilesBtn.addEventListener('click', () => {
+                saveTilesToLocalStorage();
+                console.log('Kafelki zapisane do LocalStorage');
+            });
+            
+           
+           
+            // Add tile popup functionality
+            if (addTileBtn) {
+                addTileBtn.addEventListener("click", function() {
+                    if (!switchElement.classList.contains("on")) {
+                        tilePopup.classList.add("show");
+                    }
+                });
+            }
+            
+            // Close tile popup
+            if (closeTilePopupBtn) {
+                closeTilePopupBtn.addEventListener("click", function() {
+                    tilePopup.classList.remove("show");
+                });
+                document.addEventListener("click", function(event) {
+                    if (event.target === tilePopup) {
+                        tilePopup.classList.remove("show");
+                    }
+                });
+            }
+            
+            // Function to create a tile
+            function createTileForMainScreen(iconSrc, tileId, tileName, tileLink) {
+                // Sprawdzenie, czy kafelek już został dodany
+                if (addedTiles.has(tileId)) {
+                    console.log(`Kafelek o ID ${tileId} już istnieje na ekranie głównym.`);
+                    return null; // Jeśli kafelek już istnieje, nic nie rób
+                }
+                // Tworzenie kafelka
+                const tile = document.createElement("div");
+                tile.className = "icon";
+                tile.innerHTML = `<a href="${tileLink}"><img src="${iconSrc}" alt="Tile"><div class="name">${tileName}</a></div>`;
+                tile.id = tileId;
+                // Dodanie kafelka do zestawu `addedTiles`
+                addedTiles.add(tileId);
+                console.log(`Dodano kafelek: ${tileName} (ID: ${tileId}) do zestawu.`);                
+                
+                return tile;
+            } 
+            
+            /*
+            
+            // Function to remove a tile from the main screen
+            function removeTileFromMainScreen(tileId) {
+                const tileToRemove = document.getElementById(tileId); // Znajdź kafelek po ID
+                if (tileToRemove) {
+                    sortableContainer.removeChild(tileToRemove); // Usuń kafelek z kontenera
+                    console.log(`Tile with ID ${tileId} removed from main screen.`);
+                } else {
+                    console.error(`Tile with ID ${tileId} not found on the main screen.`);
+                }
+            }
+            *?
+          
+            function createTileForPopup(iconSrc, tileId, tileName, tileDescription) {
+                const tile = document.createElement("div");
+                tile.className = "tile-item"; // Klasa do wyświetlania w dymku
+                tile.innerHTML = `<img src="${iconSrc}" alt="Tile" class="tile-icon">
+                    <div class="tile-info">
+                        <div class="tile-name">${tileName}</div>
+                        <div class="tile-description">${tileDescription}</div>
+                    </div>
+                    <i class="fa-check">&#10003;</i>`; // Dodaj ikonę check
+                tile.id = tileId;
+                
+                 // Dodaj event listener do kafelka
+                tile.addEventListener('click', () => {
+                    if (!addedTiles.has(tileId)) { // Sprawdzenie czy kafelek już istnieje
+                        addTileToContainer(iconUrl, name, id); // Dodaj kafelek
+                        addedTiles.add(id); // Dodaj do zestawu
+                        // Pokazanie ikony check
+                        const checkIcon = tile.querySelector('.fa-check');
+                        checkIcon.style.display = 'block'; // Pokazuje ikonę check
+                    }
+                    closePopup();                    
+                });
+                return tile;
+            }
+            
+            // Load available tiles from JSON
+            fetch('assets/tiles.json')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json(); // Konwertuje odpowiedź na obiekt JSON
+                })
+                .then(data => {
+                    data.forEach(tile => {
+                        const tileElement = createTileForPopup(tile.iconUrl, tile.id, tile.name, tile.description);
+                        availableTilesContainer.appendChild(tileElement);
+                        // Dodaj nasłuchiwacz kliknięcia
+                        tileElement.addEventListener("click", function() {
+                            // Sprawdź, czy przełącznik jest wyłączony i kafelek nie został dodany
+                            if (!switchElement.classList.contains("on") && !addedTiles.has(tile.id)) {
+                                // Oznacz kafelek jako dodany
+                                addedTiles.add(tile.id);
+                                
+                                const newTile = createTileForMainScreen(tile.iconUrl, tile.id, tile.name, tile.link);
+                                sortableContainer.appendChild(newTile);
+                                // Dodaj przycisk dodawania kafelków do kontenera
+                                sortableContainer.appendChild(addTileBtn);
+                                
+                                // Pokazanie ikony check na elemencie listy
+                                const checkIcon = tileElement.querySelector('.fa-check');
+                                if (checkIcon) {
+                                    checkIcon.style.display = 'block'; // Pokazuje ikonę check
+                                } 
+                            }
+                        });
+                    });
+                })
+                .catch(error => {
+                console.error('Błąd podczas pobierania kafelków:', error);
+                });
+            
+/* CHYBA NIE POTRZEBNE....
+            
+           // Trash icon functionality
+    trashIcon.addEventListener("dragover", function(event) {
+        event.preventDefault(); // Pozwól na upuszczenie
+    });
+    trashIcon.addEventListener("drop", function(event) {
+        event.preventDefault(); // Zapobiegaj domyślnemu zachowaniu
+        const tileId = event.dataTransfer.getData("text/plain");
+        const tileToRemove = document.getElementById(tileId);
+        if (tileToRemove) {
+            // Usuń kafelek z głównego ekranu
+            sortableContainer.removeChild(tileToRemove);
+            addedTiles.delete(tileId); // Usuń kafelek z zestawu dodanych kafelków
+            // Przywróć kafelek na liście dostępnych kafelków
+            const tileElement = document.querySelector(`.tile-item[id="${tileId}"]`);
+            if (tileElement) {
+                const checkIcon = tileElement.querySelector('.fa-check');
+                if (checkIcon) {
+                    checkIcon.style.display = 'none'; // Ukryj ikonę check
+                }
+                availableTilesContainer.appendChild(tileElement.cloneNode(true)); // Skopiuj kafelek
+            } else {
+                console.error("Tile element not found in available tiles");
+            }
+        }
+    });
+    *?
+                        // Funkcja zapisująca wszystkie kafelki do LocalStorage
+            function saveTilesToLocalStorage() {
+                const tiles = Array.from(sortableContainer.querySelectorAll('.icon'));
+                const tileData = tiles.map(tile => ({
+                    id: tile.dataset.id,
+                    iconUrl: tile.querySelector('img').src,
+                    name: tile.querySelector('span').textContent
+                }));
+                localStorage.setItem('tiles', JSON.stringify(tileData));
+            }
+            // Funkcja usuwająca kafelek i aktualizująca LocalStorage
+            function removeTile(tileElement, id) {
+                tileElement.remove(); // Usuń kafelek z interfejsu
+                // Usuń kafelek z LocalStorage
+                let savedTiles = JSON.parse(localStorage.getItem('tiles')) || [];
+                savedTiles = savedTiles.filter(tile => tile.id !== id); // Usuń kafelek o podanym id
+                localStorage.setItem('tiles', JSON.stringify(savedTiles));
+                console.log(`Kafelek o id ${id} został usunięty.`);
+            }
+            // Funkcja ładująca kafelki z LocalStorage
+            function loadTilesFromLocalStorage() {
+                const savedTiles = JSON.parse(localStorage.getItem('tiles'));
+                if (savedTiles) {
+                    savedTiles.forEach(tile => {
+                        addTileToContainer(tile.iconUrl, tile.name, tile.id);
+                    });
+                }
+            }
+            // Eksport kafelków do pliku JSON
+            document.getElementById("export-tiles").addEventListener("click", function() {
+                const tilesData = JSON.stringify(localStorage.getItem('tiles'));
+                const element = document.createElement("a");
+                const file = new Blob([tilesData], {type: 'application/json'});
+                element.href = URL.createObjectURL(file);
+                element.download = "EcoSetup.json";
+                document.body.appendChild(element);
+                element.click();
+                document.body.removeChild(element);
+            });
+             // Import kafelków z pliku JSON
+            document.getElementById("import-tiles").addEventListener("change", function(event) {
+                const file = event.target.files[0];
+                if (!file || file.name !== "EcoSetup.json") {
+                    console.error("Wybrałeś nieprawidłowy plik");
+                    return;
+                }
+                const reader = new FileReader(); /* wprowadzić tu później sprawdzanie poprawnej struktury wczytywanego pliku *?
+                reader.onload = function(e) {
+                    try {
+                        const importedData = JSON.parse(e.target.result);
+                        localStorage.setItem('tiles', JSON.stringify(importedData)); // Upewnij się, że dane są zapisywane jako string
+                        console.log("Kafelki zaimportowane!");
+                    } catch (error) {
+                        console.error("Błąd podczas importu kafelków:", error);
+                    }
+                };
+                reader.readAsText(file);
+            });
+            
+           
+        });  */
+    </script>
+    
+    <!-- nie wiem czy tak zadziała ukrywani "Zobacz info"
+    
+    <script>
+        const toggleSwitch = document.getElementById('toggleSwitch');
+        const opisDiv = document.querySelector('.opis'); // Znajduje element opis
+        toggleSwitch.addEventListener('change', function() {
+        if (toggleSwitch.checked) {
+        opisDiv.style.display = 'flex'; // Pokaż opis
+        } else {
+        opisDiv.style.display = 'none'; // Ukryj opis
+    }
+        });
+    </script> -->
+
+<!--    
+    
+    <script>
+    // Funkcja do obsługi kliknięcia menu
+      document.addEventListener("DOMContentLoaded", function() {
+            const menu = document.getElementById("menu");
+            const menuDropdown = document.getElementById("menu-dropdown");
+            // Obsługa kliknięcia w menu
+            menu.addEventListener("click", function() {
+                event.stopPropagation(); // Zapobiega propagacji kliknięcia, aby nie ukrywać menu od razu
+                menuDropdown.classList.toggle("show");
+            });
+            // Ukrywanie menu, jeśli kliknięto poza nim
+            document.addEventListener("click", function(event) {
+                if (!menu.contains(event.target) && !menuDropdown.contains(event.target)) {
+                    menuDropdown.classList.remove("show");
+                }
+            });
+        });
+        /* LOCAL STORAGE .... chyba
+        
+        // Funkcja do dodania kafelka do kontenera oraz zapisania w LocalStorage
+function addTileToContainer(iconUrl, name) {
+    const newTile = document.createElement('div');
+    newTile.className = 'icon';
+    newTile.innerHTML = `
+        <img src="${iconUrl}" alt="${name}">
+        <span>${name}</span>
+        <button class="remove-btn">Usuń</button>
+    `;
+    newTile.querySelector('.remove-btn').addEventListener('click', function() {
+        removeTile(newTile); // Usunięcie kafelka
+        saveTilesToLocalStorage(); // Aktualizacja LocalStorage po usunięciu
+    });
+    sortableContainer.appendChild(newTile);
+    
+    saveTilesToLocalStorage(); // Zapis do LocalStorage po dodaniu kafelka
+}
+// Funkcja do wczytywania kafelków z LocalStorage
+function loadTilesFromLocalStorage() {
+    const savedTiles = JSON.parse(localStorage.getItem('savedTiles'));
+    if (savedTiles) {
+        savedTiles.forEach(tile => {
+            addTileToContainer(tile.iconUrl, tile.name);
+        });
+    }
+}
+// Wczytanie kafelków po załadowaniu strony
+document.addEventListener("DOMContentLoaded", function() {
+    loadTilesFromLocalStorage();
+});
+*/
+</script>
+-->
+    
+</body>
+</html>
